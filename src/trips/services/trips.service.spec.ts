@@ -1,16 +1,24 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { HttpService } from '@nestjs/axios';
+import {
+  ConflictException,
+  HttpException,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { TripsService } from './trips.service';
+import { getModelToken } from '@nestjs/mongoose';
+import { Test, TestingModule } from '@nestjs/testing';
+import { Model, Types } from 'mongoose';
 import { of, throwError } from 'rxjs';
-import { HttpException } from '@nestjs/common';
-import { SortBy } from '../enums/sort-type.enum';
 import { AirportCode } from '../enums/airport-code.enum';
+import { SortBy } from '../enums/sort-type.enum';
+import { Trip } from '../schemas/trip.schema';
+import { TripsService } from './trips.service';
 
 describe('Trips Service', () => {
   let service: TripsService;
   let httpService: HttpService;
   let configService: ConfigService;
+  let tripModel: Model<Trip>;
 
   const mockTrips = [
     {
@@ -36,6 +44,29 @@ describe('Trips Service', () => {
     },
   ];
 
+  const mockSavedTrips = [
+    {
+      _id: new Types.ObjectId('507f1f77bcf86cd799439011'),
+      apiId: 'a749c866-7928-4d08-9d5c-a6821a583d1a',
+      origin: AirportCode.SYD,
+      destination: AirportCode.GRU,
+      duration: 5,
+      cost: 20,
+      type: 'flight',
+      display_name: 'from SYD to GRU by flight',
+    },
+    {
+      _id: new Types.ObjectId('507f1f77bcf86cd799439012'),
+      apiId: 'b849c866-7928-4d08-9d5c-a6821a583d1b',
+      origin: AirportCode.CDG,
+      destination: AirportCode.BCN,
+      duration: 2,
+      cost: 50,
+      type: 'flight',
+      display_name: 'from CDG to BCN by flight',
+    },
+  ];
+
   const mockConfigService = {
     get: jest.fn((key: string) => {
       switch (key) {
@@ -53,6 +84,15 @@ describe('Trips Service', () => {
     get: jest.fn(),
   };
 
+  const mockTripModel = {
+    find: jest.fn(),
+    findOne: jest.fn(),
+    findByIdAndDelete: jest.fn(),
+    create: jest.fn(),
+    save: jest.fn(),
+    exec: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -65,12 +105,17 @@ describe('Trips Service', () => {
           provide: ConfigService,
           useValue: mockConfigService,
         },
+        {
+          provide: getModelToken(Trip.name),
+          useValue: mockTripModel,
+        },
       ],
     }).compile();
 
     service = module.get<TripsService>(TripsService);
     httpService = module.get<HttpService>(HttpService);
     configService = module.get<ConfigService>(ConfigService);
+    tripModel = module.get<Model<Trip>>(getModelToken(Trip.name));
   });
 
   it('should be defined', () => {
@@ -170,6 +215,82 @@ describe('Trips Service', () => {
           done();
         },
       });
+    });
+  });
+
+  describe('saveTrip', () => {
+    const newTripDto = {
+      apiId: 'a749c866-7928-4d08-9d5c-a6821a583d1a',
+      origin: AirportCode.SYD,
+      destination: AirportCode.GRU,
+      duration: 5,
+      cost: 20,
+      type: 'flight',
+      display_name: 'from SYD to GRU by flight',
+    };
+
+    it('should successfully save a new trip', async () => {
+      mockTripModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      });
+
+      const savedTrip = { ...newTripDto, _id: new Types.ObjectId() };
+      mockTripModel.create.mockResolvedValue(savedTrip);
+
+      const result = await service.saveTrip(newTripDto);
+
+      expect(result).toEqual(savedTrip);
+      expect(mockTripModel.findOne).toHaveBeenCalledWith({
+        apiId: newTripDto.apiId,
+      });
+      expect(mockTripModel.create).toHaveBeenCalledWith(newTripDto);
+    });
+
+    it('should throw ConflictException when trip with same apiId exists', async () => {
+      mockTripModel.findOne.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(mockSavedTrips[0]),
+      });
+
+      await expect(service.saveTrip(newTripDto)).rejects.toThrow(
+        ConflictException,
+      );
+      expect(mockTripModel.findOne).toHaveBeenCalledWith({
+        apiId: newTripDto.apiId,
+      });
+    });
+  });
+
+  describe('deleteSavedTrip', () => {
+    it('should successfully delete a saved trip', async () => {
+      const tripId = '507f1f77bcf86cd799439011';
+      const deletedTrip = mockSavedTrips[0];
+
+      mockTripModel.findByIdAndDelete.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(deletedTrip),
+      });
+
+      const result = await service.deleteSavedTrip(tripId);
+
+      expect(result).toEqual(deletedTrip);
+      expect(mockTripModel.findByIdAndDelete).toHaveBeenCalledWith(
+        new Types.ObjectId(tripId),
+      );
+    });
+
+    it('should throw NotFoundException when trip does not exist', async () => {
+      const nonExistentId = '507f1f77bcf86cd799439099';
+
+      mockTripModel.findByIdAndDelete.mockReturnValueOnce({
+        exec: jest.fn().mockResolvedValueOnce(null),
+      });
+
+      await expect(service.deleteSavedTrip(nonExistentId)).rejects.toThrow(
+        NotFoundException,
+      );
+
+      expect(mockTripModel.findByIdAndDelete).toHaveBeenCalledWith(
+        new Types.ObjectId(nonExistentId),
+      );
     });
   });
 });

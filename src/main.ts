@@ -13,7 +13,7 @@ async function bootstrap() {
       whitelist: true,
     }),
   );
-  
+
   const config = new DocumentBuilder()
     .setTitle('Trips API')
     .setDescription('Simple Trips API')
@@ -23,7 +23,7 @@ async function bootstrap() {
     .build();
 
   const documentFactory = () => SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, documentFactory);
+  SwaggerModule.setup('docs', app, documentFactory);
 
   await app.listen(process.env.PORT ?? 8000);
 }

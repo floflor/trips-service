@@ -1,8 +1,13 @@
 import { HttpService } from '@nestjs/axios';
-import { ConflictException, HttpException, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  HttpException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AxiosResponse } from 'axios';
-import { catchError, map, Observable } from 'rxjs';
+import { catchError, map, NotFoundError, Observable } from 'rxjs';
 import { GetTripsDto } from '../dtos/get-trips.dto';
 import { ITrip } from '../interfaces/trips.interface';
 import { SortBy } from '../enums/sort-type.enum';
@@ -56,7 +61,7 @@ export class TripsService {
   }
 
   async listSavedTrips(): Promise<Trip[]> {
-    return this.tripModel.find().exec();
+    return await this.tripModel.find().exec();
   }
 
   async saveTrip(tripDto: SaveTripDto): Promise<Trip> {
@@ -68,12 +73,18 @@ export class TripsService {
       throw new ConflictException('a trip with this apiId already exists');
     }
 
-    const newTrip = new this.tripModel(tripDto);
-    return newTrip.save();
+    return this.tripModel.create(tripDto);
   }
 
   async deleteSavedTrip(id: string): Promise<Trip> {
-    const objectId = new Types.ObjectId(id);
-    return this.tripModel.findByIdAndDelete({ _id: objectId }).exec();
+    const deletedTrip = await this.tripModel
+      .findByIdAndDelete(new Types.ObjectId(id))
+      .exec();
+
+    if (!deletedTrip) {
+      throw new NotFoundException('trip not found');
+    }
+
+    return deletedTrip;
   }
 }
