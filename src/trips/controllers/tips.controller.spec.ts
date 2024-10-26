@@ -5,7 +5,7 @@ import { of } from 'rxjs';
 import { SortBy } from '../enums/sort-type.enum';
 import { AirportCode } from '../enums/airport-code.enum';
 import { ConfigService } from '@nestjs/config';
-import { ApiKeyGuard } from '../guards/trips.guard';
+import { ApiKeyGuard } from '../guards/api-key.guard';
 
 describe('Trip Controller', () => {
   let controller: TripController;

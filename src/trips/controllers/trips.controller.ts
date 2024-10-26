@@ -8,7 +8,7 @@ import {
 import { TripsService } from '../services/trips.service';
 import { ApiSecurity, ApiTags } from '@nestjs/swagger';
 import { ITrip } from '../interfaces/trips.interface';
-import { ApiKeyGuard } from '../guards/trips.guard';
+import { ApiKeyGuard } from '../guards/api-key.guard';
 import { GetTripsDto } from '../dtos/get-trips.dto';
 import { Observable } from 'rxjs';
 const API_TAGS = 'trips';
