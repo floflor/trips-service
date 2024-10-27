@@ -74,7 +74,7 @@ export class TripsService {
       filter.destination = destination;
     }
 
-    const savedTrips = await this.tripModel.find(filter);
+    const savedTrips = await this.tripModel.find(filter).exec();
 
     if (sort_by) {
       return this.sortTrips(savedTrips, sort_by);

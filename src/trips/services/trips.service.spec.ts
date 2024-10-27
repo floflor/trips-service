@@ -13,7 +13,6 @@ import { AirportCode } from '../enums/airport-code.enum';
 import { SortBy } from '../enums/sort-type.enum';
 import { Trip } from '../schemas/trip.schema';
 import { TripsService } from './trips.service';
-import { exec } from 'child_process';
 
 describe('Trips Service', () => {
   let service: TripsService;
@@ -220,14 +219,125 @@ describe('Trips Service', () => {
   });
 
   describe('listSavedTrips', () => {
-    it('should successfully list all the trips saved', async () => {
+    const mockTripsData = [
+      {
+        _id: new Types.ObjectId('507f1f77bcf86cd799439011'),
+        apiId: 'trip-1',
+        origin: AirportCode.BCN,
+        destination: AirportCode.MAD,
+        duration: 3,
+        cost: 100,
+        type: 'flight',
+        display_name: 'BCN to MAD flight',
+      },
+      {
+        _id: new Types.ObjectId('507f1f77bcf86cd799439012'),
+        apiId: 'trip-2',
+        origin: AirportCode.BCN,
+        destination: AirportCode.MAD,
+        duration: 1,
+        cost: 200,
+        type: 'flight',
+        display_name: 'BCN to MAD express',
+      },
+      {
+        _id: new Types.ObjectId('507f1f77bcf86cd799439013'),
+        apiId: 'trip-3',
+        origin: AirportCode.BCN,
+        destination: AirportCode.MAD,
+        duration: 2,
+        cost: 50,
+        type: 'flight',
+        display_name: 'BCN to MAD budget',
+      },
+    ];
+
+    it('should retrieve all saved trips', async () => {
       mockTripModel.find.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(mockSavedTrips),
+        exec: jest.fn().mockResolvedValue(mockTripsData),
       });
 
-      const result = await service.listSavedTrips();
+      const result = await service.listSavedTrips({});
 
-      expect(result).toEqual(mockSavedTrips);
+      expect(result).toEqual(mockTripsData);
+      expect(mockTripModel.find).toHaveBeenCalledWith({});
+    });
+
+    it('should filter trips by origin and destination', async () => {
+      const filteredTrips = mockTripsData.filter(
+        (trip) =>
+          trip.origin === AirportCode.BCN &&
+          trip.destination === AirportCode.MAD,
+      );
+
+      mockTripModel.find.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(filteredTrips),
+      });
+
+      const result = await service.listSavedTrips({
+        origin: AirportCode.BCN,
+        destination: AirportCode.MAD,
+      });
+
+      expect(result).toEqual(filteredTrips);
+      expect(mockTripModel.find).toHaveBeenCalledWith({
+        origin: AirportCode.BCN,
+        destination: AirportCode.MAD,
+      });
+    });
+
+    it('should sort trips by cost when sort_by is CHEAPEST', async () => {
+      mockTripModel.find.mockReturnValue({
+        exec: jest.fn().mockResolvedValue([...mockTripsData]),
+      });
+
+      const result = await service.listSavedTrips({
+        sort_by: SortBy.CHEAPEST,
+      });
+
+      expect(result[0].cost).toBe(50);
+      expect(result[1].cost).toBe(100);
+      expect(result[2].cost).toBe(200);
+    });
+
+    it('should sort trips by duration when sort_by is FASTEST', async () => {
+      mockTripModel.find.mockReturnValue({
+        exec: jest.fn().mockResolvedValue([...mockTripsData]),
+      });
+
+      const result = await service.listSavedTrips({
+        sort_by: SortBy.FASTEST,
+      });
+
+      expect(result[0].duration).toBe(1);
+      expect(result[1].duration).toBe(2);
+      expect(result[2].duration).toBe(3);
+    });
+
+    it('should apply both filter and sort', async () => {
+      const filteredAndSortedTrips = [...mockTripsData]
+        .filter(
+          (trip) =>
+            trip.origin === AirportCode.BCN &&
+            trip.destination === AirportCode.MAD,
+        )
+        .sort((a, b) => a.cost - b.cost);
+
+      mockTripModel.find.mockReturnValue({
+        exec: jest.fn().mockResolvedValue([...mockTripsData]),
+      });
+
+      const result = await service.listSavedTrips({
+        origin: AirportCode.BCN,
+        destination: AirportCode.MAD,
+        sort_by: SortBy.CHEAPEST,
+      });
+
+      expect(result[0].cost).toBe(50);
+      expect(mockTripModel.find).toHaveBeenCalledWith({
+        origin: AirportCode.BCN,
+        destination: AirportCode.MAD,
+      });
     });
   });
 

@@ -1,12 +1,12 @@
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { of } from 'rxjs';
+import { SaveTripDto } from '../dtos/save-trip.dto';
 import { AirportCode } from '../enums/airport-code.enum';
 import { SortBy } from '../enums/sort-type.enum';
 import { ApiKeyGuard } from '../guards/api-key.guard';
 import { TripsService } from '../services/trips.service';
 import { TripController } from './trips.controller';
-import { SaveTripDto } from '../dtos/save-trip.dto';
 
 describe('Trip Controller', () => {
   let controller: TripController;
@@ -116,13 +116,63 @@ describe('Trip Controller', () => {
   });
 
   describe('listSavedTrips', () => {
-    it('should return all saved trips', async () => {
+    it('should retrieve all saved trips', async () => {
       mockTripsService.listSavedTrips.mockResolvedValue(mockSavedTrips);
 
-      const result = await controller.listSavedTrips();
+      const result = await controller.listSavedTrips({});
 
       expect(result).toEqual(mockSavedTrips);
-      expect(tripsService.listSavedTrips).toHaveBeenCalled();
+      expect(mockTripsService.listSavedTrips).toHaveBeenCalledWith({});
+    });
+
+    it('should filter trips by origin and destination', async () => {
+      const filteredTrips = mockSavedTrips.filter(
+        (trip) =>
+          trip.origin === AirportCode.CDG &&
+          trip.destination === AirportCode.BCN,
+      );
+      mockTripsService.listSavedTrips.mockResolvedValue(filteredTrips);
+
+      const result = await controller.listSavedTrips({
+        origin: AirportCode.CDG,
+        destination: AirportCode.BCN,
+      });
+
+      expect(result).toEqual(filteredTrips);
+      expect(mockTripsService.listSavedTrips).toHaveBeenCalledWith({
+        origin: AirportCode.CDG,
+        destination: AirportCode.BCN,
+      });
+    });
+
+    it('should sort trips by cost when sort_by is CHEAPEST', async () => {
+      const sortedTrips = [...mockSavedTrips].sort((a, b) => a.cost - b.cost);
+      mockTripsService.listSavedTrips.mockResolvedValue(sortedTrips);
+
+      const result = await controller.listSavedTrips({
+        sort_by: SortBy.CHEAPEST,
+      });
+
+      expect(result[0].cost).toBe(20);
+      expect(mockTripsService.listSavedTrips).toHaveBeenCalledWith({
+        sort_by: SortBy.CHEAPEST,
+      });
+    });
+
+    it('should sort trips by duration when sort_by is FASTEST', async () => {
+      const sortedTrips = [...mockSavedTrips].sort(
+        (a, b) => a.duration - b.duration,
+      );
+      mockTripsService.listSavedTrips.mockResolvedValue(sortedTrips);
+
+      const result = await controller.listSavedTrips({
+        sort_by: SortBy.FASTEST,
+      });
+
+      expect(result[0].duration).toBe(2);
+      expect(mockTripsService.listSavedTrips).toHaveBeenCalledWith({
+        sort_by: SortBy.FASTEST,
+      });
     });
   });
 
