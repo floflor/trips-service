@@ -13,6 +13,7 @@ import { AirportCode } from '../enums/airport-code.enum';
 import { SortBy } from '../enums/sort-type.enum';
 import { Trip } from '../schemas/trip.schema';
 import { TripsService } from './trips.service';
+import { exec } from 'child_process';
 
 describe('Trips Service', () => {
   let service: TripsService;
@@ -215,6 +216,18 @@ describe('Trips Service', () => {
           done();
         },
       });
+    });
+  });
+
+  describe('listSavedTrips', () => {
+    it('should successfully list all the trips saved', async () => {
+      mockTripModel.find.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(mockSavedTrips),
+      });
+
+      const result = await service.listSavedTrips();
+
+      expect(result).toEqual(mockSavedTrips);
     });
   });
 

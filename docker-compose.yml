@@ -7,3 +7,8 @@ services:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
       MONGO_INITDB_DATABASE: trips
+    volumes:
+      - mongodb_data:/data/db
+
+volumes:
+  mongodb_data:
