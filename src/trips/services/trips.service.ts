@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AxiosResponse } from 'axios';
-import { catchError, map, NotFoundError, Observable } from 'rxjs';
+import { catchError, map, Observable } from 'rxjs';
 import { GetTripsDto } from '../dtos/get-trips.dto';
 import { ITrip } from '../interfaces/trips.interface';
 import { SortBy } from '../enums/sort-type.enum';
@@ -15,6 +15,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Trip, TripDocument } from '../schemas/trip.schema';
 import { Model, Types } from 'mongoose';
 import { SaveTripDto } from '../dtos/save-trip.dto';
+import { GetSavedTripsDto } from '../dtos/get-saved-trips.dto';
 
 @Injectable()
 export class TripsService {
@@ -27,6 +28,16 @@ export class TripsService {
     private readonly configService: ConfigService,
     private readonly httpService: HttpService,
   ) {}
+
+  private sortTrips<T extends { duration: number; cost: number }>(
+    trips: T[],
+    sort_by: SortBy,
+  ) {
+    const sortMethod = this.sortByMap[sort_by];
+    return trips.sort((a, b) => {
+      return a[sortMethod] - b[sortMethod];
+    });
+  }
 
   search(getTripsDto: GetTripsDto): Observable<ITrip[]> {
     const { origin, destination, sort_by } = getTripsDto;
@@ -43,13 +54,7 @@ export class TripsService {
       .pipe(
         map((response: AxiosResponse<ITrip[]>) => {
           let trips = response.data;
-          const filterMethod = this.sortByMap[sort_by];
-
-          trips.sort((a, b) => {
-            return a[filterMethod] - b[filterMethod];
-          });
-
-          return trips;
+          return this.sortTrips(trips, sort_by);
         }),
         catchError((error) => {
           const status = error.response?.status || 500;
@@ -60,8 +65,21 @@ export class TripsService {
       );
   }
 
-  async listSavedTrips(): Promise<Trip[]> {
-    return await this.tripModel.find().exec();
+  async listSavedTrips(getSavedTripsDto: GetSavedTripsDto): Promise<Trip[]> {
+    const { origin, destination, sort_by } = getSavedTripsDto;
+    const filter: Record<string, any> = {};
+
+    if (origin && destination) {
+      filter.origin = origin;
+      filter.destination = destination;
+    }
+
+    const savedTrips = await this.tripModel.find(filter);
+
+    if (sort_by) {
+      return this.sortTrips(savedTrips, sort_by);
+    }
+    return savedTrips;
   }
 
   async saveTrip(tripDto: SaveTripDto): Promise<Trip> {

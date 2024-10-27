@@ -22,6 +22,7 @@ import { GetTripsDto } from '../dtos/get-trips.dto';
 import { Observable } from 'rxjs';
 import { Trip } from '../schemas/trip.schema';
 import { SaveTripDto } from '../dtos/save-trip.dto';
+import { GetSavedTripsDto } from '../dtos/get-saved-trips.dto';
 
 const API_TAGS = 'trips';
 
@@ -53,8 +54,10 @@ export class TripController {
     description: 'List of saved trips retrieved.',
   })
   @Get('saved')
-  async listSavedTrips(): Promise<Trip[]> {
-    return this.tripService.listSavedTrips();
+  async listSavedTrips(
+    @Query() getSavedTripsDto: GetSavedTripsDto,
+  ): Promise<Trip[]> {
+    return this.tripService.listSavedTrips(getSavedTripsDto);
   }
 
   @ApiOperation({ summary: 'Save a new trip' })
