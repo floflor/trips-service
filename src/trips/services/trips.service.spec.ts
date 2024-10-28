@@ -20,7 +20,6 @@ describe('Trips Service', () => {
   let configService: ConfigService;
   let tripModel: Model<Trip>;
 
-  // Mock data for API responses (without MongoDB _id)
   const mockTrips = [
     {
       id: 1,
@@ -45,7 +44,6 @@ describe('Trips Service', () => {
     },
   ];
 
-  // Mock data for database records (with MongoDB _id)
   const mockSavedTrips = [
     {
       _id: new Types.ObjectId('507f1f77bcf86cd799439011'),

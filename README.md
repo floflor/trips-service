@@ -42,7 +42,7 @@ A NestJS-based API service for managing trips, providing features for searching,
 1. Clone the repository:
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/floflor/trips-service.git
 cd trips-service
 ```
 
@@ -122,3 +122,22 @@ npm run lint
 ## API Documentation
 
 API documentation is available at `/docs` when the application is running. This provides a Swagger UI interface for exploring and testing the available endpoints.
+
+## Compromises and Future Considerations
+This API service currently employs a simplified approach to saving, listing and deleting trips, aiming for fast access and ease of use. Some enhancements could improve data management, security, and scalability for a more robust, production-ready application:
+
+### Collection Design
+**Current Approach:** The service uses a single trips collection for storing trips. Saved trips are stored without being tied to specific users.
+
+**Future Enhancements:**
+
+- To better support user-specific saved trips, the database design could be expanded to include a users collection.
+- With this design, saved trips could be linked to individual users, enabling access only to the trips saved by a specific user.
+
+### User Authentication
+**Current Approach**: API security is managed via a general API key for accessing the BizAway API and other endpoints.
+
+**Future Enhancements:**
+
+- In a production setting, user authentication could be extended to allow individual accounts, enabling each user to save and manage trips securely.
+- Using a users collection, authentication tokens (e.g., JWTs) would validate user identity and authorize access to personal saved trips.
