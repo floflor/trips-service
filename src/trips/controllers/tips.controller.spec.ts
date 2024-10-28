@@ -91,6 +91,8 @@ describe('Trip Controller', () => {
 
     controller = module.get<TripController>(TripController);
     tripsService = module.get<TripsService>(TripsService);
+
+    jest.clearAllMocks();
   });
 
   it('should be defined', () => {
@@ -116,9 +118,11 @@ describe('Trip Controller', () => {
   });
 
   describe('listSavedTrips', () => {
-    it('should retrieve all saved trips', async () => {
+    beforeEach(() => {
       mockTripsService.listSavedTrips.mockResolvedValue(mockSavedTrips);
+    });
 
+    it('should retrieve all saved trips', async () => {
       const result = await controller.listSavedTrips({});
 
       expect(result).toEqual(mockSavedTrips);
@@ -126,11 +130,7 @@ describe('Trip Controller', () => {
     });
 
     it('should filter trips by origin and destination', async () => {
-      const filteredTrips = mockSavedTrips.filter(
-        (trip) =>
-          trip.origin === AirportCode.CDG &&
-          trip.destination === AirportCode.BCN,
-      );
+      const filteredTrips = [mockSavedTrips[1]];
       mockTripsService.listSavedTrips.mockResolvedValue(filteredTrips);
 
       const result = await controller.listSavedTrips({
@@ -153,23 +153,24 @@ describe('Trip Controller', () => {
         sort_by: SortBy.CHEAPEST,
       });
 
-      expect(result[0].cost).toBe(20);
+      expect(result[0]).toEqual(mockSavedTrips[0]);
       expect(mockTripsService.listSavedTrips).toHaveBeenCalledWith({
         sort_by: SortBy.CHEAPEST,
       });
     });
 
     it('should sort trips by duration when sort_by is FASTEST', async () => {
-      const sortedTrips = [...mockSavedTrips].sort(
+      const sortedByDuration = [...mockSavedTrips].sort(
         (a, b) => a.duration - b.duration,
       );
-      mockTripsService.listSavedTrips.mockResolvedValue(sortedTrips);
+      mockTripsService.listSavedTrips.mockResolvedValue(sortedByDuration);
 
       const result = await controller.listSavedTrips({
         sort_by: SortBy.FASTEST,
       });
 
-      expect(result[0].duration).toBe(2);
+      expect(result[0]).toEqual(mockSavedTrips[1]);
+      expect(result).toEqual(sortedByDuration);
       expect(mockTripsService.listSavedTrips).toHaveBeenCalledWith({
         sort_by: SortBy.FASTEST,
       });
@@ -178,17 +179,9 @@ describe('Trip Controller', () => {
 
   describe('saveTrip', () => {
     it('should successfully save a new trip', async () => {
-      const newTripDto: SaveTripDto = {
-        apiId: 'a749c866-7928-4d08-9d5c-a6821a583d1a',
-        origin: AirportCode.SYD,
-        destination: AirportCode.GRU,
-        duration: 5,
-        cost: 20,
-        type: 'flight',
-        display_name: 'from SYD to GRU by flight',
-      };
+      const newTripDto: SaveTripDto = mockSavedTrips[0];
+      const savedTrip = { ...newTripDto };
 
-      const savedTrip = { ...newTripDto, _id: 'new-trip-id' };
       mockTripsService.saveTrip.mockResolvedValue(savedTrip);
 
       const result = await controller.saveTrip(newTripDto);
@@ -199,13 +192,9 @@ describe('Trip Controller', () => {
 
     it('should throw an error when saving a trip with invalid data', async () => {
       const invalidTripDto = {
+        ...mockSavedTrips[0],
         apiId: 'invalid-uuid',
         origin: 'INVALID' as AirportCode,
-        destination: AirportCode.GRU,
-        duration: 5,
-        cost: 20,
-        type: 'flight',
-        display_name: 'from INVALID to GRU by flight',
       };
 
       mockTripsService.saveTrip.mockRejectedValue(
@@ -220,26 +209,24 @@ describe('Trip Controller', () => {
 
   describe('deleteSavedTrip', () => {
     it('should successfully delete a saved trip', async () => {
-      const tripId = 'saved-trip-1';
-      const deletedTrip = mockSavedTrips[0];
+      const tripToDelete = mockSavedTrips[0];
+      mockTripsService.deleteSavedTrip.mockResolvedValue(tripToDelete);
 
-      mockTripsService.deleteSavedTrip.mockResolvedValue(deletedTrip);
+      const result = await controller.deleteSavedTrip(tripToDelete._id);
 
-      const result = await controller.deleteSavedTrip(tripId);
-
-      expect(result).toEqual(deletedTrip);
-      expect(tripsService.deleteSavedTrip).toHaveBeenCalledWith(tripId);
+      expect(result).toEqual(tripToDelete);
+      expect(tripsService.deleteSavedTrip).toHaveBeenCalledWith(
+        tripToDelete._id,
+      );
     });
 
     it('should throw an error when deleting a non-existent trip', async () => {
-      const nonExistentTripId = 'non-existent-id';
-
       mockTripsService.deleteSavedTrip.mockRejectedValue(
         new Error('Trip not found'),
       );
 
       await expect(
-        controller.deleteSavedTrip(nonExistentTripId),
+        controller.deleteSavedTrip('non-existent-id'),
       ).rejects.toThrow('Trip not found');
     });
   });

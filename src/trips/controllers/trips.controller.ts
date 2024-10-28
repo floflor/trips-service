@@ -28,12 +28,12 @@ const API_TAGS = 'trips';
 
 @ApiTags(API_TAGS)
 @Controller('trips')
+@UseGuards(ApiKeyGuard)
+@ApiSecurity('api_key')
 @ApiResponse({ status: 500, description: 'Internal server error.' })
 export class TripController {
   constructor(private readonly tripService: TripsService) {}
 
-  @UseGuards(ApiKeyGuard)
-  @ApiSecurity('api_key')
   @ApiOperation({
     summary: 'Retrieve available trips based on search and sort criteria',
   })
@@ -70,7 +70,7 @@ export class TripController {
     status: 409,
     description: 'Trip with the given apiId already exists.',
   })
-  @Post()
+  @Post('saved')
   async saveTrip(@Body() tripDto: SaveTripDto): Promise<Trip> {
     return this.tripService.saveTrip(tripDto);
   }

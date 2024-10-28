@@ -20,6 +20,7 @@ describe('Trips Service', () => {
   let configService: ConfigService;
   let tripModel: Model<Trip>;
 
+  // Mock data for API responses (without MongoDB _id)
   const mockTrips = [
     {
       id: 1,
@@ -44,6 +45,7 @@ describe('Trips Service', () => {
     },
   ];
 
+  // Mock data for database records (with MongoDB _id)
   const mockSavedTrips = [
     {
       _id: new Types.ObjectId('507f1f77bcf86cd799439011'),
@@ -219,55 +221,22 @@ describe('Trips Service', () => {
   });
 
   describe('listSavedTrips', () => {
-    const mockTripsData = [
-      {
-        _id: new Types.ObjectId('507f1f77bcf86cd799439011'),
-        apiId: 'trip-1',
-        origin: AirportCode.BCN,
-        destination: AirportCode.MAD,
-        duration: 3,
-        cost: 100,
-        type: 'flight',
-        display_name: 'BCN to MAD flight',
-      },
-      {
-        _id: new Types.ObjectId('507f1f77bcf86cd799439012'),
-        apiId: 'trip-2',
-        origin: AirportCode.BCN,
-        destination: AirportCode.MAD,
-        duration: 1,
-        cost: 200,
-        type: 'flight',
-        display_name: 'BCN to MAD express',
-      },
-      {
-        _id: new Types.ObjectId('507f1f77bcf86cd799439013'),
-        apiId: 'trip-3',
-        origin: AirportCode.BCN,
-        destination: AirportCode.MAD,
-        duration: 2,
-        cost: 50,
-        type: 'flight',
-        display_name: 'BCN to MAD budget',
-      },
-    ];
-
     it('should retrieve all saved trips', async () => {
       mockTripModel.find.mockReturnValue({
-        exec: jest.fn().mockResolvedValue(mockTripsData),
+        exec: jest.fn().mockResolvedValue(mockSavedTrips),
       });
 
       const result = await service.listSavedTrips({});
 
-      expect(result).toEqual(mockTripsData);
+      expect(result).toEqual(mockSavedTrips);
       expect(mockTripModel.find).toHaveBeenCalledWith({});
     });
 
     it('should filter trips by origin and destination', async () => {
-      const filteredTrips = mockTripsData.filter(
+      const filteredTrips = mockSavedTrips.filter(
         (trip) =>
-          trip.origin === AirportCode.BCN &&
-          trip.destination === AirportCode.MAD,
+          trip.origin === AirportCode.CDG &&
+          trip.destination === AirportCode.BCN,
       );
 
       mockTripModel.find.mockReturnValue({
@@ -275,81 +244,77 @@ describe('Trips Service', () => {
       });
 
       const result = await service.listSavedTrips({
-        origin: AirportCode.BCN,
-        destination: AirportCode.MAD,
+        origin: AirportCode.CDG,
+        destination: AirportCode.BCN,
       });
 
       expect(result).toEqual(filteredTrips);
       expect(mockTripModel.find).toHaveBeenCalledWith({
-        origin: AirportCode.BCN,
-        destination: AirportCode.MAD,
+        origin: AirportCode.CDG,
+        destination: AirportCode.BCN,
       });
     });
 
     it('should sort trips by cost when sort_by is CHEAPEST', async () => {
       mockTripModel.find.mockReturnValue({
-        exec: jest.fn().mockResolvedValue([...mockTripsData]),
+        exec: jest.fn().mockResolvedValue([...mockSavedTrips]),
       });
 
       const result = await service.listSavedTrips({
         sort_by: SortBy.CHEAPEST,
       });
 
-      expect(result[0].cost).toBe(50);
-      expect(result[1].cost).toBe(100);
-      expect(result[2].cost).toBe(200);
+      expect(result[0].cost).toBe(20);
+      expect(result[1].cost).toBe(50);
     });
 
     it('should sort trips by duration when sort_by is FASTEST', async () => {
       mockTripModel.find.mockReturnValue({
-        exec: jest.fn().mockResolvedValue([...mockTripsData]),
+        exec: jest.fn().mockResolvedValue([...mockSavedTrips]),
       });
 
       const result = await service.listSavedTrips({
         sort_by: SortBy.FASTEST,
       });
 
-      expect(result[0].duration).toBe(1);
-      expect(result[1].duration).toBe(2);
-      expect(result[2].duration).toBe(3);
+      expect(result[0].duration).toBe(2);
+      expect(result[1].duration).toBe(5);
     });
 
     it('should apply both filter and sort', async () => {
-      const filteredAndSortedTrips = [...mockTripsData]
-        .filter(
-          (trip) =>
-            trip.origin === AirportCode.BCN &&
-            trip.destination === AirportCode.MAD,
-        )
-        .sort((a, b) => a.cost - b.cost);
+      const filteredAndSortedTrips = mockSavedTrips.filter(
+        (trip) =>
+          trip.origin === AirportCode.CDG &&
+          trip.destination === AirportCode.BCN,
+      );
 
       mockTripModel.find.mockReturnValue({
-        exec: jest.fn().mockResolvedValue([...mockTripsData]),
+        exec: jest.fn().mockResolvedValue(filteredAndSortedTrips),
       });
 
       const result = await service.listSavedTrips({
-        origin: AirportCode.BCN,
-        destination: AirportCode.MAD,
+        origin: AirportCode.CDG,
+        destination: AirportCode.BCN,
         sort_by: SortBy.CHEAPEST,
       });
 
       expect(result[0].cost).toBe(50);
       expect(mockTripModel.find).toHaveBeenCalledWith({
-        origin: AirportCode.BCN,
-        destination: AirportCode.MAD,
+        origin: AirportCode.CDG,
+        destination: AirportCode.BCN,
       });
     });
   });
 
   describe('saveTrip', () => {
     const newTripDto = {
-      apiId: 'a749c866-7928-4d08-9d5c-a6821a583d1a',
-      origin: AirportCode.SYD,
-      destination: AirportCode.GRU,
-      duration: 5,
-      cost: 20,
-      type: 'flight',
-      display_name: 'from SYD to GRU by flight',
+      apiId: mockSavedTrips[0].apiId,
+      origin: mockSavedTrips[0].origin,
+      destination: mockSavedTrips[0].destination,
+      duration: mockSavedTrips[0].duration,
+      cost: mockSavedTrips[0].cost,
+      type: mockSavedTrips[0].type,
+      display_name: mockSavedTrips[0].display_name,
     };
 
     it('should successfully save a new trip', async () => {
@@ -357,7 +322,7 @@ describe('Trips Service', () => {
         exec: jest.fn().mockResolvedValue(null),
       });
 
-      const savedTrip = { ...newTripDto, _id: new Types.ObjectId() };
+      const savedTrip = { ...newTripDto, _id: mockSavedTrips[0]._id };
       mockTripModel.create.mockResolvedValue(savedTrip);
 
       const result = await service.saveTrip(newTripDto);
@@ -385,7 +350,7 @@ describe('Trips Service', () => {
 
   describe('deleteSavedTrip', () => {
     it('should successfully delete a saved trip', async () => {
-      const tripId = '507f1f77bcf86cd799439011';
+      const tripId = mockSavedTrips[0]._id.toString();
       const deletedTrip = mockSavedTrips[0];
 
       mockTripModel.findByIdAndDelete.mockReturnValue({
